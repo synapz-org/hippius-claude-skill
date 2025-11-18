@@ -42,13 +42,13 @@ This skill enables Claude to help users:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/hippius-claude-skill.git
-   cd hippius-claude-skill/hippius-user
+   git clone https://github.com/synapz-org/hippius-claude-skill.git
+   cd hippius-claude-skill
    ```
 
 2. Copy to your Claude Code skills directory:
    ```bash
-   cp -r . ~/.claude/skills/hippius-user/
+   cp -r hippius-user ~/.claude/skills/
    ```
 
 ## Usage
@@ -150,7 +150,7 @@ MIT License - See LICENSE file for details
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/hippius-claude-skill/issues)
+- **Issues**: [GitHub Issues](https://github.com/synapz-org/hippius-claude-skill/issues)
 - **Hippius Support**: [community.hippius.com](https://community.hippius.com)
 - **Claude Code**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
 
