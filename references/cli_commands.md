@@ -2,288 +2,276 @@
 
 ## Overview
 
-The Hippius CLI (`hipc`) is a Rust-based command-line tool for IPFS and S3 storage, referral, and node operations on the Hippius blockchain.
+The Hippius CLI (`hippius`) is a Python-based command-line tool for IPFS and blockchain storage operations on the Hippius network (Bittensor Subnet 75).
+
+**IMPORTANT**: The public IPFS endpoint (`store.hippius.network`) is deprecated. Most file operation commands (`store`, `download`, `credits`, `files`, etc.) require a self-hosted IPFS node. For most users, the **S3 endpoint** (`s3.hippius.com`) is the recommended storage path.
 
 ## Installation
 
-### Prerequisites
-
-1. **Rust**: Install from [rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-2. **Docker**: Install from [docs.docker.com/get-docker](https://docs.docker.com/get-docker/)
-3. **Running Substrate node** with required modules
-4. **Environment variables**:
-   - `SUBSTRATE_NODE_URL` (default: `ws://127.0.0.1:9944`)
-   - `SUBSTRATE_SEED_PHRASE`
-
-### Installation Steps
-
 ```bash
-# Clone the repository
-git clone https://github.com/thenervelab/hipc.git
-cd hipc
-
-# Build and install
-cargo install --path .
-
-# Copy binary to system path
-cp target/release/hipc /usr/local/bin/
+pip install hippius
 ```
 
-### Configuration
-
-Create a `.env` file in your project directory or set environment variables:
-
+Or via conda/pipx:
 ```bash
-SUBSTRATE_NODE_URL=ws://127.0.0.1:9944
-SUBSTRATE_SEED_PHRASE="your twelve or twenty-four word mnemonic phrase here"
+pipx install hippius
 ```
 
-## Command Categories
+## Configuration
 
-### Wallet Management
+Configuration is stored at `~/.hippius/config.json`.
 
-#### Create New Hotkey Wallet
-
-Create a new hotkey wallet for use with Hippius.
-
+### View Configuration
 ```bash
-hipc wallet create
+hippius config list
 ```
 
-#### List Available Wallets
-
-Display all wallets available to the CLI.
-
+### Set Configuration Values
 ```bash
-hipc wallet list
+# Set HIPPIUS_KEY (API key from console.hippius.com)
+hippius config set hippius hippius_key "your_hippius_key"
+
+# Set seed phrase for blockchain operations
+hippius config set substrate seed_phrase "your twelve word mnemonic here"
+
+# Disable local IPFS (use remote)
+hippius config set ipfs local_ipfs false
+
+# Set custom IPFS API URL (required if not using local IPFS)
+hippius config set ipfs api_url http://your-ipfs-node:5001
+
+# Set Substrate RPC URL
+hippius config set substrate url wss://rpc.hippius.network
 ```
 
-### Storage Operations
-
-#### Pin File to IPFS
-
-Upload and pin a file to decentralized IPFS storage.
-
+### Import from .env file
 ```bash
-hipc storage pin <file_path>
+hippius config import-env
 ```
 
-**Parameters:**
-- `file_path`: Path to the file to pin
-
-**Returns:**
-- IPFS hash (CID) of the pinned file
-
-#### Unpin File from IPFS
-
-Remove a file from IPFS pinning.
-
+### Reset to defaults
 ```bash
-hipc storage unpin <ipfs_hash>
+hippius config reset
 ```
 
-**Parameters:**
-- `ipfs_hash`: The IPFS CID of the file to unpin
+## Account Management
 
-#### Upload File to IPFS
-
-Upload a file to IPFS storage.
-
+### Login with HIPPIUS_KEY (recommended)
 ```bash
-hipc storage upload <file_path>
+hippius account login
+```
+Interactive prompt for HIPPIUS_KEY from console.hippius.com.
+
+### Login with Seed Phrase (for miners)
+```bash
+hippius account login-seed
+```
+Interactive prompt for account name and 12/24-word mnemonic. Note: this is for miners who need to sign blockchain transactions.
+
+### List Accounts
+```bash
+hippius account list
 ```
 
-**Parameters:**
-- `file_path`: Path to the file to upload
-
-**Returns:**
-- IPFS hash (CID) of the uploaded file
-
-### Node Management
-
-#### Register Validator Node
-
-Register a validator node on the Hippius network.
-
-**With hotkey:**
+### Account Info
 ```bash
-hipc node register-validator --hotkey <hotkey_address>
+hippius account info
 ```
 
-**With coldkey:**
+### Switch Account
 ```bash
-hipc node register-validator --coldkey <coldkey_address>
+hippius account switch
 ```
 
-**Parameters:**
-- `--hotkey`: Hotkey wallet address
-- `--coldkey`: Coldkey wallet address
-
-#### Register Storage Miner Node
-
-Register a storage miner node on the Hippius network.
-
+### Account Balance
 ```bash
-hipc node register-storage-miner
+hippius account balance
 ```
 
-#### Query Node Information
-
-Retrieve information about a specific node.
-
+### Export/Import Account
 ```bash
-hipc node info <node_id>
+hippius account export
+hippius account import
 ```
 
-**Parameters:**
-- `node_id`: The identifier of the node
-
-**Returns:**
-- Node type
-- Status
-- Performance metrics
-- Registration details
-
-#### Swap Node Ownership
-
-Transfer ownership of a node to another account.
-
+### Delete Account
 ```bash
-hipc node swap <node_id> <new_owner_address>
+hippius account delete
 ```
 
-**Parameters:**
-- `node_id`: The identifier of the node
-- `new_owner_address`: The address of the new owner
+## File Operations (Require IPFS Node)
 
-### Account Operations
+**All commands below require a configured IPFS node URL.** Without one, they fail with: `ERROR: Public https://store.hippius.network has been deprecated.`
 
-#### Transfer Funds
-
-Transfer funds between accounts.
-
+### Store (Upload) a File
 ```bash
-hipc account transfer <recipient_address> <amount>
+hippius store <file_path>
+
+# Without encryption
+hippius store <file_path> --no-encrypt
+
+# With encryption
+hippius store <file_path> --encrypt
 ```
 
-**Parameters:**
-- `recipient_address`: The address to send funds to
-- `amount`: Amount to transfer
-
-#### Stake Funds
-
-Stake funds to participate in network consensus.
-
+### Download a File
 ```bash
-hipc account stake <amount>
+hippius download <CID> <output_path>
+
+# Without decryption
+hippius download <CID> <output_path> --no-decrypt
 ```
 
-**Parameters:**
-- `amount`: Amount to stake
-
-#### Unstake Funds
-
-Unstake previously staked funds.
-
+### Store a Directory
 ```bash
-hipc account unstake <amount>
+hippius store-dir <directory_path>
 ```
 
-**Parameters:**
-- `amount`: Amount to unstake
-
-#### Withdraw Funds
-
-Withdraw funds from your account.
-
+### Check if CID Exists
 ```bash
-hipc account withdraw <amount>
+hippius exists <CID>
 ```
 
-**Parameters:**
-- `amount`: Amount to withdraw
-
-### Additional Tools
-
-#### Check Account Credits
-
-Retrieve the free credit balance for your account.
-
+### View File Content
 ```bash
-hipc credits check
+hippius cat <CID>
 ```
 
-**Returns:**
-- Free credit balance
-
-#### Retrieve HIPS Key Files
-
-Obtain HIPS key files for your account.
-
+### Pin a CID
 ```bash
-hipc keys get-hips
+# Pin and publish to blockchain
+hippius pin <CID>
+
+# Pin without blockchain publish
+hippius pin <CID> --no-publish
 ```
 
-#### Obtain IPFS ID
-
-Get the IPFS ID for your node.
-
+### Delete a File
 ```bash
-hipc ipfs get-id
+hippius delete <CID>
 ```
 
-**Returns:**
-- IPFS peer ID
-
-#### Obtain Node ID
-
-Get the node ID for your registered node.
-
+### List Your Files
 ```bash
-hipc node get-id
+hippius files
+
+# Show all miners for each file
+hippius files --all-miners
 ```
 
-**Returns:**
-- Node identifier
-
-#### Insert Keys to Local Node
-
-Insert cryptographic keys to a local Substrate node.
-
+### Check Credits
 ```bash
-hipc keys insert <key_type> <key_value>
+hippius credits
 ```
 
-**Parameters:**
-- `key_type`: Type of key (e.g., aura, gran)
-- `key_value`: The key value to insert
+## Erasure Coding (Require IPFS Node)
+
+### Erasure Code a File
+```bash
+# Default settings (k=3, m=5)
+hippius erasure-code <file_path>
+
+# Custom parameters
+hippius erasure-code <file_path> --k 3 --m 5
+
+# Without publishing to global IPFS
+hippius erasure-code <file_path> --no-publish
+```
+
+### Reconstruct a File
+```bash
+hippius reconstruct <metadata_CID> <output_path>
+```
+
+### List Erasure-Coded Files
+```bash
+hippius ec-files
+```
+
+### Delete Erasure-Coded File
+```bash
+hippius ec-delete <metadata_CID>
+```
+
+## Encryption
+
+### Generate Encryption Key
+```bash
+hippius keygen
+```
+
+### Use Encryption with Uploads
+```bash
+# Encrypt by default
+hippius config set encryption encrypt_by_default true
+
+# Or per-command
+hippius store <file> --encrypt --encryption-key <base64_key>
+```
+
+## Global Options
+
+```
+--api-url <URL>       Custom IPFS API URL
+--local-ipfs          Use local IPFS node (localhost:5001)
+--substrate-url <URL> Custom Substrate WebSocket URL
+--miner-ids <IDs>     Comma-separated miner IDs
+--verbose / -v        Enable debug output
+--encrypt             Encrypt files when uploading
+--no-encrypt          Skip encryption
+--decrypt             Decrypt files when downloading
+--no-decrypt          Skip decryption
+--hippius-key <KEY>   Override HIPPIUS_KEY
+--account <NAME>      Use specific account
+```
+
+## S3 Alternative (Recommended)
+
+Since the IPFS endpoint is deprecated, use the S3-compatible endpoint instead:
+
+```bash
+# Set credentials
+export AWS_ACCESS_KEY_ID="hip_your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+
+# Upload
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 cp file.txt s3://my-bucket/file.txt
+
+# Download
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 cp s3://my-bucket/file.txt ./file.txt
+
+# List files
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 ls s3://my-bucket/
+
+# Create bucket
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 mb s3://my-bucket
+```
+
+Get S3 credentials (`hip_` prefix keys) from [console.hippius.com](https://console.hippius.com/dashboard/settings).
 
 ## Troubleshooting
 
-### Connection Issues
+### "Public store.hippius.network has been deprecated"
 
-If you encounter connection issues:
+All file operation commands require an IPFS node. Options:
+1. Use S3 endpoint instead (recommended)
+2. Run local IPFS: `ipfs daemon` then `hippius config set ipfs api_url http://localhost:5001`
 
-1. Verify `SUBSTRATE_NODE_URL` is set correctly
-2. Ensure the Substrate node is running and accessible
-3. Check firewall settings
+### Login Issues
 
-### Authentication Errors
+- `hippius account login` and `hippius account login-seed` are interactive (require TTY)
+- For non-interactive setup, use `hippius config set` directly
+- HIPPIUS_KEY is an API key from console.hippius.com (not a seed phrase)
 
-If authentication fails:
+### Config Location
 
-1. Verify `SUBSTRATE_SEED_PHRASE` is set correctly
-2. Ensure the mnemonic phrase is valid (12 or 24 words)
-3. Check that the account has sufficient balance for transactions
+Configuration file: `~/.hippius/config.json`
 
-### Docker Requirements
-
-Some storage operations may require Docker. Ensure Docker is running:
-
-```bash
-docker ps
-```
-
-## License
-
-The Hippius CLI is MIT licensed.
+Default values:
+- Substrate URL: `wss://rpc.hippius.network`
+- IPFS local: `true` (set to `false` for remote)
+- Encryption: `false` by default

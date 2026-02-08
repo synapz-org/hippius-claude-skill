@@ -2,295 +2,274 @@
 
 ## Overview
 
-Hippius offers two primary storage solutions: IPFS-based decentralized storage and S3-compatible hybrid storage. This guide helps you choose the right option and use it effectively.
+Hippius offers two storage solutions: IPFS-based decentralized storage and S3-compatible hybrid storage. **As of 2026, the S3 endpoint is the recommended path** since the public IPFS node has been deprecated.
+
+## Current Status
+
+| Storage Type | Status | Endpoint |
+|-------------|--------|----------|
+| **S3** | **Active (Recommended)** | `s3.hippius.com` |
+| **IPFS** | Deprecated public node | Requires self-hosted IPFS node |
 
 ## Storage Options
 
-### IPFS Storage
+### S3-Compatible Storage (Recommended)
 
 **What it is:**
-Fully decentralized, content-addressed storage where the blockchain manages file pinning.
-
-**How it works:**
-- Files are stored across a distributed network of IPFS nodes
-- Each file receives a unique Content Identifier (CID) based on its content
-- The Hippius blockchain tracks which miners are pinning your files
-- Content is permanent and immutable once pinned
-
-**Best for:**
-- Public data that should be permanently available
-- Content that benefits from deduplication
-- Files that need to be shared across the decentralized web
-- NFT metadata and assets
-- Websites and web applications
-- Documentation and public datasets
-
-**Advantages:**
-- Truly decentralized and censorship-resistant
-- Content-addressed (same content = same hash)
-- No single point of failure
-- Transparent on-chain tracking of pinning
-- Permanent storage with proper pinning
-
-**Limitations:**
-- Generally slower retrieval for first access (caching improves this)
-- All content is public and discoverable by CID
-- Cannot modify files (must upload new version with new CID)
-- Costs associated with pinning across multiple nodes
-
-### S3-Compatible Storage
-
-**What it is:**
-Secure object storage with S3-compatible API, using decentralized storage volumes as the backend.
+Secure object storage with full S3 API compatibility, using decentralized storage volumes as the backend.
 
 **How it works:**
 - Files stored in buckets using familiar S3 API
-- Backend uses decentralized storage infrastructure
-- Rapid access through API endpoints
+- Backend uses decentralized storage infrastructure (Bittensor SN75)
+- Rapid access through HTTPS API endpoints
 - Supports standard S3 operations (PUT, GET, DELETE, LIST)
+- Compatible with aws-cli, boto3, MinIO client, and any S3 SDK
 
 **Best for:**
+- All general-purpose storage needs
 - Private files requiring access control
 - Applications already using S3 APIs
 - Frequent file updates and modifications
 - Large datasets requiring fast random access
-- Application backends needing object storage
-- Files requiring encryption and privacy
+- Agent state persistence and backups
 
-**Advantages:**
-- Fast access with API-based retrieval
-- Familiar S3 API for easy integration
-- Private storage with access controls
-- Supports file modification and deletion
-- Compatible with existing S3 tools and libraries
+**Configuration:**
+- Endpoint: `https://s3.hippius.com`
+- Region: `decentralized`
+- Auth: Access keys from console.hippius.com (prefix: `hip_`)
 
-**Limitations:**
-- Less decentralized than pure IPFS
-- Requires trust in storage provider infrastructure
-- May have single points of failure depending on configuration
+### IPFS Storage (Advanced)
 
-## Storage Comparison
+**What it is:**
+Fully decentralized, content-addressed storage where the blockchain manages file pinning.
 
-| Feature | IPFS Storage | S3-Compatible Storage |
-|---------|--------------|----------------------|
-| **Decentralization** | Fully decentralized | Hybrid (decentralized backend) |
-| **Privacy** | Public by default | Private with access control |
-| **Content Addressing** | Yes (CID-based) | No (key-based) |
-| **Mutability** | Immutable (new CID per change) | Mutable (update in place) |
-| **Speed** | Moderate (distributed) | Fast (API-based) |
-| **API** | IPFS CLI/HTTP API | S3-compatible API |
-| **Use Case** | Public permanent content | Private dynamic content |
-| **Pricing Model** | Pay for pinning | Pay per use |
+**Current limitation:**
+The public IPFS node (`store.hippius.network`) has been deprecated. To use IPFS storage, you must run your own IPFS node and configure the `hippius` CLI to point at it.
 
-## Using IPFS Storage
+**Best for:**
+- Public data that should be permanently content-addressed
+- CID-based referencing (same content = same hash)
+- Integration with IPFS ecosystem tooling
 
-### Via Hippius CLI
-
-Pin a file to IPFS:
-```bash
-hipc storage pin /path/to/file.txt
-```
-
-Upload to IPFS:
-```bash
-hipc storage upload /path/to/file.txt
-```
-
-Unpin a file:
-```bash
-hipc storage unpin QmYourIPFSHashHere
-```
-
-### Via Console
-
-1. Navigate to [console.hippius.com](https://console.hippius.com)
-2. Log in with your mnemonic phrase
-3. Go to Storage > IPFS
-4. Click "Upload File" or "Pin to IPFS"
-5. Select your file and confirm
-
-### Retrieving IPFS Files
-
-Access via public IPFS gateways:
-```
-https://ipfs.io/ipfs/<CID>
-https://gateway.pinata.cloud/ipfs/<CID>
-```
-
-Or via local IPFS node:
-```bash
-ipfs cat <CID>
-```
+**Requirements:**
+- Self-hosted IPFS node (e.g., `ipfs daemon` on port 5001)
+- `hippius` Python CLI configured with `ipfs.api_url`
 
 ## Using S3-Compatible Storage
 
 ### Authentication
 
-S3 operations require credentials. Obtain your access keys from the Hippius console.
+Get credentials from [console.hippius.com](https://console.hippius.com/dashboard/settings):
+- **Access Key ID**: Starts with `hip_` prefix
+- **Secret Access Key**: Standard secret key
+- Two types: Main keys (full access) and Sub keys (scoped with ACL)
 
-### Via AWS SDK (Example: Python boto3)
+### Via AWS CLI
+
+```bash
+# Set credentials
+export AWS_ACCESS_KEY_ID="hip_your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+
+# Create bucket
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 mb s3://my-bucket
+
+# Upload a file
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 cp local_file.txt s3://my-bucket/remote_file.txt
+
+# Download a file
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 cp s3://my-bucket/remote_file.txt local_file.txt
+
+# List files
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 ls s3://my-bucket/
+
+# List recursively
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 ls s3://my-bucket/ --recursive
+
+# Sync directory
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 sync ./local-dir/ s3://my-bucket/remote-dir/
+
+# Delete file
+aws --endpoint-url https://s3.hippius.com --region decentralized \
+    s3 rm s3://my-bucket/file.txt
+```
+
+### Via Python (boto3)
 
 ```python
 import boto3
 
-# Configure S3 client for Hippius
-s3_client = boto3.client(
+s3 = boto3.client(
     's3',
     endpoint_url='https://s3.hippius.com',
-    aws_access_key_id='YOUR_ACCESS_KEY',
-    aws_secret_access_key='YOUR_SECRET_KEY'
+    aws_access_key_id='hip_your_access_key',
+    aws_secret_access_key='your_secret_key',
+    region_name='decentralized'
 )
 
-# Upload a file
-s3_client.upload_file('local_file.txt', 'my-bucket', 'remote_file.txt')
+# Upload
+s3.upload_file('local_file.txt', 'my-bucket', 'remote_file.txt')
 
-# Download a file
-s3_client.download_file('my-bucket', 'remote_file.txt', 'downloaded_file.txt')
+# Download
+s3.download_file('my-bucket', 'remote_file.txt', 'downloaded_file.txt')
 
-# List objects in bucket
-response = s3_client.list_objects_v2(Bucket='my-bucket')
+# List objects
+response = s3.list_objects_v2(Bucket='my-bucket')
 for obj in response.get('Contents', []):
-    print(obj['Key'])
+    print(f"{obj['Key']} ({obj['Size']} bytes)")
+
+# Create bucket
+s3.create_bucket(Bucket='my-new-bucket')
 ```
 
-### Via AWS CLI
+### Via Python (MinIO)
 
-Configure AWS CLI:
+```python
+from minio import Minio
+
+client = Minio(
+    "s3.hippius.com",
+    access_key="hip_your_access_key",
+    secret_key="your_secret_key",
+    secure=True,
+    region="decentralized"
+)
+
+# Upload
+client.fput_object("my-bucket", "file.txt", "/path/to/file.txt")
+
+# Download
+client.fget_object("my-bucket", "file.txt", "/path/to/downloaded.txt")
+
+# List objects
+for obj in client.list_objects("my-bucket", recursive=True):
+    print(f"{obj.object_name} ({obj.size} bytes)")
+```
+
+### Via JavaScript (MinIO)
+
+```javascript
+const { Client } = require('minio');
+
+const client = new Client({
+  endPoint: 's3.hippius.com',
+  port: 443,
+  useSSL: true,
+  accessKey: 'hip_your_access_key',
+  secretKey: 'your_secret_key',
+  region: 'decentralized'
+});
+
+// Upload
+await client.fPutObject('my-bucket', 'file.txt', '/path/to/file.txt');
+
+// Download
+await client.fGetObject('my-bucket', 'file.txt', '/path/to/downloaded.txt');
+
+// List objects
+const stream = client.listObjects('my-bucket', '', true);
+stream.on('data', (obj) => console.log(obj.name, obj.size));
+```
+
+## Using IPFS Storage (Advanced)
+
+### Setup Required
+
+1. Install and run IPFS daemon:
+   ```bash
+   # Install IPFS (e.g., via Homebrew)
+   brew install ipfs
+   ipfs init
+   ipfs daemon
+   ```
+
+2. Configure hippius CLI:
+   ```bash
+   pip install hippius
+   hippius config set ipfs api_url http://localhost:5001
+   hippius config set ipfs local_ipfs true
+   ```
+
+### Operations (with IPFS node running)
+
 ```bash
-aws configure --profile hippius
-# Enter your access key ID and secret key
-# Set region to 'us-east-1' (or as specified)
-# Set output format to 'json'
+# Upload file
+hippius store /path/to/file.txt --no-encrypt
+
+# Download by CID
+hippius download QmYourCID /path/to/output.txt
+
+# Pin a CID
+hippius pin QmYourCID
+
+# List files
+hippius files
+
+# Check if CID exists
+hippius exists QmYourCID
 ```
 
-Upload a file:
-```bash
-aws s3 cp local_file.txt s3://my-bucket/remote_file.txt --profile hippius --endpoint-url https://s3.hippius.com
-```
+## Storage Comparison
 
-List files:
-```bash
-aws s3 ls s3://my-bucket/ --profile hippius --endpoint-url https://s3.hippius.com
-```
-
-Download a file:
-```bash
-aws s3 cp s3://my-bucket/remote_file.txt local_file.txt --profile hippius --endpoint-url https://s3.hippius.com
-```
-
-## Querying Storage via API
-
-Check your files via RPC:
-```bash
-curl -X POST http://api.hippius.io \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "get_user_files",
-    "params": ["YOUR_ACCOUNT_ADDRESS"],
-    "id": 1
-  }'
-```
-
-Check total storage used:
-```bash
-curl -X POST http://api.hippius.io \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "calculate_total_file_size",
-    "params": ["YOUR_ACCOUNT_ADDRESS"],
-    "id": 1
-  }'
-```
+| Feature | S3 Storage | IPFS Storage |
+|---------|-----------|--------------|
+| **Status** | Active (recommended) | Requires self-hosted node |
+| **Setup** | Credentials only | IPFS daemon + CLI config |
+| **Privacy** | Private with access control | Public by default |
+| **Addressing** | Key-based (bucket/key) | Content-addressed (CID) |
+| **Mutability** | Mutable (update in place) | Immutable (new CID per change) |
+| **Speed** | Fast (API-based) | Variable (distributed) |
+| **API** | S3-compatible (aws-cli, boto3) | hippius CLI |
+| **Region** | `decentralized` | N/A |
 
 ## Best Practices
 
-### For IPFS Storage
-
-1. **Pin important content**: Ensure your files are pinned to prevent garbage collection
-2. **Use descriptive filenames**: Makes files easier to identify on-chain
-3. **Consider file size**: Larger files take longer to distribute across the network
-4. **Verify uploads**: Always verify the CID after uploading
-5. **Keep CIDs safe**: Store CIDs securely; they're your only reference to content
-
 ### For S3 Storage
 
-1. **Use bucket policies**: Implement appropriate access controls
-2. **Enable versioning**: Protect against accidental deletions
-3. **Monitor usage**: Track storage costs via blockchain records
-4. **Use lifecycle policies**: Automatically clean up old data
-5. **Encrypt sensitive data**: Use client-side encryption for sensitive files
+1. **Use `decentralized` region** - not `us-east-1` or any AWS region
+2. **Secure credentials** - use environment variables, not hardcoded values
+3. **Organize with prefixes** - use key prefixes like folders (e.g., `snapshots/`, `files/`)
+4. **Keep a `latest` alias** - for state backups, copy to a known key like `latest.tar.gz`
+5. **Monitor usage** - track stored objects and sizes
 
 ### General
 
-1. **Backup important data**: Don't rely on a single storage solution
-2. **Monitor costs**: Track on-chain records of usage
-3. **Test retrievals**: Regularly verify you can retrieve your files
-4. **Use appropriate storage**: Match storage type to use case
-5. **Keep credentials secure**: Protect mnemonic phrases and API keys
-
-## Pricing
-
-Hippius uses a pay-per-use model tracked on the blockchain:
-
-- **IPFS pinning**: Pay for the storage space and redundancy across miners
-- **S3 storage**: Pay for storage capacity and data transfer
-- **Credits system**: Purchase credits or earn through referrals
-- **Transparent billing**: All charges recorded on-chain
-
-Check your credits:
-```bash
-hipc credits check
-```
-
-Or via API:
-```bash
-curl -X POST http://api.hippius.io \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "get_free_credits_rpc",
-    "params": ["YOUR_ACCOUNT_ADDRESS"],
-    "id": 1
-  }'
-```
+1. **Backup important data** - don't rely on a single storage solution
+2. **Keep credentials secure** - protect API keys and mnemonics
+3. **Test round-trips** - verify you can upload AND download successfully
+4. **Use `.env` files** - with `chmod 600` permissions
 
 ## Troubleshooting
 
-### IPFS Upload Issues
+### S3 Access Errors
 
-**Problem**: Upload fails or times out
-- Check network connectivity
-- Verify file size isn't too large
-- Ensure sufficient credits in account
-- Try uploading to multiple gateways
+- Verify access key starts with `hip_`
+- Region must be `decentralized` (not `us-east-1`)
+- Endpoint must be `https://s3.hippius.com`
+- Check keys at console.hippius.com > Settings > API Keys
 
-**Problem**: File not accessible after upload
-- Wait for pinning to propagate (can take several minutes)
-- Verify CID is correct
-- Check if enough miners have pinned the file
-- Try accessing via different IPFS gateways
+### "Public store.hippius.network has been deprecated"
 
-### S3 Access Issues
+Use S3 instead, or set up a local IPFS node:
+```bash
+hippius config set ipfs api_url http://localhost:5001
+hippius config set ipfs local_ipfs true
+```
 
-**Problem**: Authentication errors
-- Verify access key and secret key
-- Check endpoint URL is correct
-- Ensure account has sufficient credits
-- Verify bucket permissions
+### Slow Uploads
 
-**Problem**: Slow uploads/downloads
 - Check network connection
-- Try different times (network congestion)
-- Consider file size and chunking for large files
-- Verify endpoint region settings
+- For large files (>5MB), S3 handles multipart uploads automatically
+- Try at different times if network congestion is an issue
 
 ## Resources
 
-- **Hippius Documentation**: [docs.hippius.com](https://docs.hippius.com)
-- **IPFS Documentation**: [docs.ipfs.tech](https://docs.ipfs.tech)
-- **AWS S3 Documentation**: [docs.aws.amazon.com/s3](https://docs.aws.amazon.com/s3/)
-- **Hippius Community**: [community.hippius.com](https://community.hippius.com)
-- **API Reference**: See `api_reference.md`
-- **CLI Commands**: See `cli_commands.md`
+- **Hippius Docs**: [docs.hippius.com](https://docs.hippius.com)
+- **S3 Integration**: [docs.hippius.com/storage/s3/integration](https://docs.hippius.com/storage/s3/integration)
+- **Console**: [console.hippius.com](https://console.hippius.com)

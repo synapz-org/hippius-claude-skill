@@ -2,138 +2,79 @@
 #
 # Hippius CLI Installation Script
 #
-# This script automates the installation of the Hippius CLI (hipc)
-# including prerequisite checks and environment setup.
+# Installs the hippius Python CLI and configures it for use.
+# The recommended storage path is S3 (s3.hippius.com) — most hippius CLI
+# file commands require a self-hosted IPFS node since the public endpoint
+# is deprecated.
 #
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_error() { echo -e "${RED}ERROR: $1${NC}"; }
+print_success() { echo -e "${GREEN}$1${NC}"; }
+print_warning() { echo -e "${YELLOW}$1${NC}"; }
+print_info() { echo -e "${BLUE}$1${NC}"; }
 
 echo "========================================="
 echo "  Hippius CLI Installation Script"
 echo "========================================="
 echo ""
 
-# Function to print colored messages
-print_error() {
-    echo -e "${RED}ERROR: $1${NC}"
-}
-
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
-
-print_info() {
-    echo "ℹ $1"
-}
-
-# Check if Rust is installed
+# Check Python
 echo "Checking prerequisites..."
-if ! command -v rustc &> /dev/null; then
-    print_error "Rust is not installed"
-    echo ""
-    echo "Please install Rust from: https://rust-lang.org/tools/install"
-    echo "Run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-    exit 1
+if command -v python3 &> /dev/null; then
+    PY_VERSION=$(python3 --version)
+    print_success "Python3 is installed: $PY_VERSION"
 else
-    RUST_VERSION=$(rustc --version)
-    print_success "Rust is installed: $RUST_VERSION"
-fi
-
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-    print_warning "Docker is not installed"
-    echo "Docker is required for some storage operations."
-    echo "Install from: https://docs.docker.com/get-docker/"
-    echo ""
-    read -p "Continue without Docker? (y/n) " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-else
-    print_success "Docker is installed"
-    # Check if Docker daemon is running
-    if ! docker ps &> /dev/null; then
-        print_warning "Docker daemon is not running. Please start Docker."
-    else
-        print_success "Docker daemon is running"
-    fi
-fi
-
-# Check if cargo is in PATH
-if ! command -v cargo &> /dev/null; then
-    print_error "Cargo is not in PATH"
-    echo "Please ensure Rust's cargo is in your PATH"
-    echo "Try: source \$HOME/.cargo/env"
+    print_error "Python3 is not installed"
+    echo "Install Python 3 from: https://python.org/downloads/"
     exit 1
 fi
 
-echo ""
-echo "========================================="
-echo "  Installing Hippius CLI"
-echo "========================================="
-echo ""
-
-# Create temporary directory for installation
-TEMP_DIR=$(mktemp -d)
-print_info "Using temporary directory: $TEMP_DIR"
-
-# Clone the repository
-print_info "Cloning Hippius CLI repository..."
-if git clone https://github.com/thenervelab/hipc.git "$TEMP_DIR/hipc"; then
-    print_success "Repository cloned successfully"
+# Check pip
+if command -v pip3 &> /dev/null; then
+    print_success "pip3 is available"
+elif command -v pip &> /dev/null; then
+    print_success "pip is available"
 else
-    print_error "Failed to clone repository"
-    rm -rf "$TEMP_DIR"
+    print_error "pip is not installed"
+    echo "Install with: python3 -m ensurepip --upgrade"
     exit 1
 fi
 
-# Build and install
-cd "$TEMP_DIR/hipc"
-print_info "Building Hippius CLI (this may take several minutes)..."
-
-if cargo install --path .; then
-    print_success "Hippius CLI built successfully"
-else
-    print_error "Failed to build Hippius CLI"
-    cd -
-    rm -rf "$TEMP_DIR"
-    exit 1
-fi
-
-# Copy binary to system path (optional)
-if [ -f "$HOME/.cargo/bin/hipc" ]; then
-    print_success "Binary installed to: $HOME/.cargo/bin/hipc"
-
-    # Optionally copy to /usr/local/bin
+# Check if hippius is already installed
+if command -v hippius &> /dev/null; then
+    CURRENT_VERSION=$(hippius --version 2>&1 || echo "unknown")
+    print_warning "hippius is already installed: $CURRENT_VERSION"
     echo ""
-    read -p "Copy hipc to /usr/local/bin for system-wide access? (requires sudo) (y/n) " -n 1 -r
+    read -p "Upgrade to latest version? (y/n) " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        if sudo cp "$HOME/.cargo/bin/hipc" /usr/local/bin/; then
-            print_success "Binary copied to /usr/local/bin/hipc"
-        else
-            print_warning "Failed to copy to /usr/local/bin (continuing anyway)"
-        fi
+        pip3 install --upgrade hippius
+    else
+        echo "Keeping current version."
     fi
 else
-    print_error "Binary not found at expected location"
-fi
+    echo ""
+    echo "========================================="
+    echo "  Installing hippius CLI"
+    echo "========================================="
+    echo ""
 
-# Clean up
-cd -
-rm -rf "$TEMP_DIR"
-print_success "Cleaned up temporary files"
+    if pip3 install hippius; then
+        print_success "hippius CLI installed successfully"
+    else
+        print_error "Failed to install hippius"
+        echo "Try: pip3 install --user hippius"
+        exit 1
+    fi
+fi
 
 echo ""
 echo "========================================="
@@ -141,22 +82,45 @@ echo "  Verifying Installation"
 echo "========================================="
 echo ""
 
-# Verify installation
-if command -v hipc &> /dev/null; then
-    HIPC_VERSION=$(hipc --version 2>&1 || echo "version unknown")
-    print_success "Hippius CLI is installed: $HIPC_VERSION"
+if command -v hippius &> /dev/null; then
+    HIPPIUS_VERSION=$(hippius --version 2>&1 || echo "version unknown")
+    print_success "hippius CLI is installed: $HIPPIUS_VERSION"
 else
-    print_error "hipc command not found"
-    echo "Make sure $HOME/.cargo/bin is in your PATH"
-    echo "Add to your ~/.bashrc or ~/.zshrc:"
-    echo "  export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+    print_error "hippius command not found after installation"
+    echo "Ensure pip install directory is in your PATH"
+    echo "Try: python3 -m hippius --version"
     exit 1
+fi
+
+# Check for AWS CLI (needed for S3 operations)
+echo ""
+if command -v aws &> /dev/null; then
+    AWS_VERSION=$(aws --version 2>&1)
+    print_success "AWS CLI is installed: $AWS_VERSION"
+else
+    print_warning "AWS CLI is not installed (needed for S3 storage)"
+    echo "Install with: pip3 install awscli"
+    echo "Or see: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html"
 fi
 
 echo ""
 echo "========================================="
-echo "  Environment Configuration"
+echo "  Configuration"
 echo "========================================="
+echo ""
+
+print_info "Configuring hippius CLI..."
+
+# Disable local IPFS by default (public endpoint is deprecated)
+hippius config set ipfs local_ipfs false 2>/dev/null || true
+print_success "Set local_ipfs = false (public IPFS endpoint is deprecated)"
+
+echo ""
+print_warning "IMPORTANT: The public Hippius IPFS endpoint (store.hippius.network)"
+print_warning "has been deprecated. For storage operations, use the S3 endpoint:"
+print_warning "  Endpoint: https://s3.hippius.com"
+print_warning "  Region: decentralized"
+print_warning "  Get access keys from: https://console.hippius.com/dashboard/settings"
 echo ""
 
 # Check for environment configuration
@@ -165,40 +129,13 @@ if [ -f .env ]; then
 else
     print_warning "No .env file found"
     echo ""
-    echo "To use the Hippius CLI, you need to configure:"
-    echo "  1. SUBSTRATE_NODE_URL - WebSocket endpoint for Hippius node"
-    echo "  2. SUBSTRATE_SEED_PHRASE - Your 12 or 24-word mnemonic phrase"
+    echo "To use Hippius S3 storage, create a .env file with:"
+    echo "  HIPPIUS_S3_ACCESS_KEY=hip_your_access_key_here"
+    echo "  HIPPIUS_S3_SECRET_KEY=your_secret_key_here"
+    echo "  HIPPIUS_S3_BUCKET=my-bucket"
     echo ""
-    read -p "Create .env file now? (y/n) " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Get node URL
-        echo "Enter Substrate node URL (press Enter for default: ws://127.0.0.1:9944):"
-        read NODE_URL
-        NODE_URL=${NODE_URL:-ws://127.0.0.1:9944}
-
-        # Get seed phrase
-        echo ""
-        echo "Enter your seed phrase (12 or 24 words):"
-        echo "⚠ WARNING: This will be stored in plain text in .env"
-        read -s SEED_PHRASE
-        echo ""
-
-        # Create .env file
-        cat > .env << EOF
-# Hippius CLI Configuration
-SUBSTRATE_NODE_URL=$NODE_URL
-SUBSTRATE_SEED_PHRASE="$SEED_PHRASE"
-EOF
-
-        # Secure the file
-        chmod 600 .env
-        print_success ".env file created and secured (chmod 600)"
-
-        echo ""
-        print_warning "Remember to add .env to your .gitignore!"
-        echo "Run: echo '.env' >> .gitignore"
-    fi
+    echo "Get credentials from: https://console.hippius.com/dashboard/settings"
+    echo "Access keys start with the 'hip_' prefix."
 fi
 
 echo ""
@@ -206,13 +143,17 @@ echo "========================================="
 echo "  Installation Complete!"
 echo "========================================="
 echo ""
-print_success "Hippius CLI is ready to use"
+print_success "hippius CLI is ready to use"
 echo ""
-echo "Next steps:"
-echo "  1. Configure environment variables (if not done above)"
-echo "  2. Source your .env file: source .env"
-echo "  3. Test the CLI: hipc wallet list"
-echo "  4. View all commands: hipc --help"
+echo "For S3 storage (recommended):"
+echo "  1. Get S3 credentials from console.hippius.com"
+echo "  2. Set env vars: HIPPIUS_S3_ACCESS_KEY, HIPPIUS_S3_SECRET_KEY"
+echo "  3. Test: aws --endpoint-url https://s3.hippius.com --region decentralized s3 ls"
+echo ""
+echo "For hippius CLI (requires self-hosted IPFS node for file commands):"
+echo "  1. Set API key: hippius config set hippius hippius_key \"your_key\""
+echo "  2. View config: hippius config list"
+echo "  3. See all commands: hippius --help"
 echo ""
 echo "Documentation:"
 echo "  - CLI Commands: see references/cli_commands.md"
